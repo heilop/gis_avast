@@ -1,0 +1,12 @@
+name = YouTube Field
+description = Provides an YouTube widget for fields. 
+core = 7.x
+dependencies[] = field 
+dependencies[] = image
+dependencies[] = file
+; Information added by drupal.org packaging script on 2012-01-17
+version = "7.x-1.0-alpha2"
+core = "7.x"
+project = "youtube"
+datestamp = "1326784857"
+

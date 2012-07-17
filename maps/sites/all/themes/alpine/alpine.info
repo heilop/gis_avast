@@ -1,0 +1,26 @@
+name = Alpine
+description = 2 Column Layout. Pure CSS Menu Dropdowns. A nature theme good for outdoors related websites and blogs.
+core = 7.x
+version = VERSION
+stylesheets[all][] = style.css
+
+regions[content] = Content
+regions[help] = Help
+regions[page_top] = Page top
+regions[header] = Header
+regions[content_header] = Header Content
+regions[highlighted] = Highlighted
+regions[content_top] = Content Top
+regions[page_bottom] = Page bottom
+regions[sidebar_first] = Sidebar
+regions[content_bottom] = Content Bottom
+regions[footer] = Footer
+
+
+
+; Information added by drupal.org packaging script on 2012-01-09
+version = "7.x-1.4"
+core = "7.x"
+project = "alpine"
+datestamp = "1326151837"
+

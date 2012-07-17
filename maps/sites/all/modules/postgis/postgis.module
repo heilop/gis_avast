@@ -1,0 +1,98 @@
+<?php
+
+/**
+ * @file
+ * Main file of this module. Loads include files and implements general hooks.
+ */
+
+module_load_include('inc', 'postgis', '/includes/postgis.feeds');
+module_load_include('inc', 'postgis', '/includes/postgis.field');
+module_load_include('inc', 'postgis', '/includes/postgis.field.formatter');
+module_load_include('inc', 'postgis', '/includes/postgis.field.widget');
+module_load_include('inc', 'postgis', '/includes/postgis.geometry');
+module_load_include('inc', 'postgis', '/includes/postgis.openlayers');
+
+define('POSTGIS_DEFAULT_SRID', 4326);
+
+/**
+ * Implements hook_ctools_plugin_api().
+ *
+ * Required for OpenLayers integration.
+ */
+function postgis_ctools_plugin_api($module, $api) {
+  if ($module == 'openlayers') {
+    switch ($api) {
+      case 'openlayers_maps':
+        return array('version' => 1);
+
+      case 'openlayers_layers':
+        return array('version' => 1);
+    }
+  }
+  elseif ($module == 'geoserver') {
+    switch ($api) {
+      case 'geoserver_layer_types':
+        return array('version' => 1);
+    }
+  }
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function postgis_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'geoserver' && $plugin == 'layer_types') {
+    return 'plugins/geoserver/layer_types';
+  }
+}
+
+/**
+ * Implements hook_ctools_plugin_type().
+ */
+function postgis_ctools_plugin_type() {
+  return array('layer_types' => array());
+}
+
+/**
+ * Implements hook_help().
+ */
+function postgis_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#postgis':
+      return t('This module requires a PostGIS 1.5 enabled PostgreSQL database. See the PostGIS documentation on <a href="@link">how to install PostGIS</a>. To manage geospatial content add a PostGIS field to any <a href="@types">content type</a> you like.', array('@link' => 'http://postgis.org/documentation/manual-1.5/ch02.html', '@types' => url('admin/structure/types')));
+  }
+}
+
+/**
+ * AJAX callback; fills the form of a PostGIS GeoServer layer
+ * with default values of a given field instance.
+ *
+ * @param array $form
+ * @param array $form_state
+ *
+ * @return array
+ */
+function postgis_geoserver_layer_type_form($form, &$form_state) {
+
+  $options = $form['layer']['data']['options'];
+  $field = explode('.', $options['field']['#value']);
+  $layer = new geoserver_layer_type_postgis_field();
+  $layer->load_field($field[0], $field[1], $field[2]);
+
+  $options['srid']['#value'] = $layer->data['options']['srid'];
+  $options['geometry_name']['#value'] = $layer->data['options']['geometry_name'];
+  $options['geometry_type']['#value'] = $layer->data['options']['geometry_type'];
+  $options['bounding_box']['minx']['#value'] = $layer->data['options']['bounding_box']['minx'];
+  $options['bounding_box']['miny']['#value'] = $layer->data['options']['bounding_box']['miny'];
+  $options['bounding_box']['maxx']['#value'] = $layer->data['options']['bounding_box']['maxx'];
+  $options['bounding_box']['maxy']['#value'] = $layer->data['options']['bounding_box']['maxy'];
+  $options['sql']['#value'] = $layer->data['options']['sql'];
+
+  return array(
+    $options['srid'],
+    $options['geometry_name'],
+    $options['geometry_type'],
+    $options['bounding_box'],
+    $options['sql'],
+  );
+}

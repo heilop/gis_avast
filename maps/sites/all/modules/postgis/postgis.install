@@ -1,0 +1,86 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the PostGIS module.
+ */
+
+/**
+ * Adds a geometry column to the field definition.
+ *
+ * Implements hook_field_schema().
+ */
+function postgis_field_schema($field) {
+
+  return array(
+    'columns' => array(
+      // Column that stores geometry (whatever type is chosen).
+      'geometry' => array(
+        'type' => 'blob',
+        'pgsql_type' => 'geometry',
+        'not null' => FALSE,
+      ),
+    ),
+  );
+}
+
+/**
+ * Verifies that PostGIS is installed in a suitable version.
+ * Implements hook_requirements().
+ */
+function postgis_requirements($phase) {
+
+  if (drupal_get_bootstrap_phase() < DRUPAL_BOOTSTRAP_DATABASE) {
+    // Database configuration not available yet, ie. profile installation.
+    return array();
+  }
+
+  $requirements = array();
+  // Ensure translations don't break at install time.
+  $t = get_t();
+
+  $severity = REQUIREMENT_OK;
+  $description_extension = NULL;
+  switch ($phase) {
+    case 'install':
+    case 'update':
+    case 'runtime':
+      // Check if PostGIS is installed
+      try {
+        $value = db_query('SELECT substring(PostGIS_Version() from 1 for 3)')->fetchField();
+        if($value !== '1.5'){
+          $severity = REQUIREMENT_WARNING;
+        }
+      }
+      catch (PDOException $e) {
+        $value = $t('Not available');
+        $severity = REQUIREMENT_ERROR;
+      }
+      // Check if PostGIS can also be used
+      if($severity === REQUIREMENT_OK || $severity === REQUIREMENT_WARNING){
+        try {
+          $has_spatial_refs = db_query('select count(*)>0 from spatial_ref_sys')->fetchField();
+          if(!$has_spatial_refs){
+            $description_extension = $t('PostGIS installation lacks spatial reference systems.');
+            $severity = REQUIREMENT_ERROR;
+          }
+        } catch (PDOException $e){
+          // Cannot access PostGIS installation with Drupal user (happens when PostGIS was installed into Drupal's database using another user)
+          $description_extension = $t('Cannot access existing PostGIS installation from Drupal.');
+          $severity = REQUIREMENT_ERROR;
+        }
+      }
+      
+      $description_extension = ($description_extension===NULL) ? '' : ' '.$description_extension;
+      $requirements[] = array(
+        'title' => 'PostGIS',
+        'description' => $t('A <a href="@link">PostGIS</a> enabled database is required; version 1.5 is strongly recommended.',
+          array('@link' => 'http://postgis.org')) . $description_extension,
+        'value' => $value,
+        'severity' => $severity,
+      );
+  }
+
+  return $requirements;
+}
+

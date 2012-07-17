@@ -1,0 +1,82 @@
+<?php
+class PostgisValidationsTestCase extends DrupalUnitTestCase {
+  public static function getInfo(){
+    return array(
+      'name' => 'Geometry Validations',
+      'description' => 'Verifies geometry validating functions work correctly',
+      'group' => 'PostGIS'
+    );
+  }
+
+  public function testPostgisGeometrySetValidation(){
+    $set = new PostgisGeometrySet('point', 4236);
+    $result = $set->validate();
+    $this->assertTrue($result === NULL, 'An empty set should be valid');
+
+    $set->fromText('POINT(9 48)');
+    $result = $set->validate();
+    $this->assertTrue($result === NULL, 'A valid point should be seen as valid');
+
+    $set->fromText('LINESTRING(10 5, 12 14)');
+    $result = $set->validate();
+    $this->assertTrue(is_array($result), 'An validation error should arise since types mismatch');
+    $this->assertTrue(array_key_exists('error', $result), 'Error key is provided');
+    $this->assertTrue($result['error'] === 'postgis_typemismatch', 'Geometries were correctly parsed but it was detected that their types mismatch.');
+  }
+
+  public function testPostgisGeometrySetParseError(){
+    $set = new PostgisGeometrySet('point', 4236);
+    $set->fromText('POINT(9 48)');
+    $set->fromText('POINT(11.4 15.8)');
+    $result = $set->validate();
+    $this->assertTrue($result === NULL, 'Valid geometries should be seen as valid');
+
+    $set->fromText('POINT(15)');
+    $result = $set->validate();
+    $this->assertTrue($result['error'] === 'postgis_unparsable', 'Point with wrong data should result in parse errors.');
+  }
+
+  public function testPostgisGeometryCollectionIgnoresTypes(){
+    $set = new PostgisGeometrySet('geometrycollection', 4236);
+    $set->fromText('POINT(9 48)');
+    $set->fromText('LINESTRING(10 5, 12 14)');
+    $set->fromText('POLYGON((10 5, 12 14, 10.4 5, 10 5))');
+    $result = $set->validate();
+    $this->assertTrue($result === NULL, 'GeometryCollection should allow all geometry types');
+  }
+
+  public function testPostgisGeometryCollectionUnpack(){
+    $set = new PostgisGeometrySet('geometrycollection', 4236);
+    $set->fromText('POINT(9 48)');
+    $set->fromText('GEOMETRYCOLLECTION(POLYGON((10 5, 12 14, 10.4 5, 10 5)))');
+
+    $result = $set->validate();
+    $this->assertTrue($result === NULL, 'GeometryCollection should allow all geometry types, even other collections');
+
+    $unpacked = $set->getText();
+    $this->assertTrue($unpacked === 'GEOMETRYCOLLECTION(POINT(9 48),POLYGON((10 5,12 14,10.4 5,10 5)))', 'Geometries are merged into one GeometryCollection.');
+  }
+}
+
+class PostgisSingleGeometries extends DrupalUnitTestCase {
+  public static function getInfo(){
+    return array(
+      'name' => 'Single Geometry Uses',
+      'description' => 'Verifies class for single geometry can be used',
+      'group' => 'PostGIS'
+    );
+  }
+  
+  public function testEmptyGeometries(){
+    $geo = new PostgisGeometry('line', 4236);
+    $result = $geo->getText();
+    $this->assertTrue($result === NULL, 'WKT is NULL unless set first');
+  }
+
+  public function testSameReturned(){
+    $geo = new PostgisGeometry('point', 4236);
+    $wkt = 'POINT(9 48)';
+    $geo->fromText($wkt);
+    $this->assertTrue($wkt === $geo->getText(), 'Geometry is returned unaltered');
+  }
+}
